@@ -1,0 +1,23 @@
+$int = Get-WinEvent -FilterXml "<QueryList><Query Id='0' Path='Security'><Select Path='Security'>*[System[(EventID=4624 or EventID=4634)]] and *[EventData[Data[@Name='LogonType']='2' or '10']]</Select></Query></QueryList>"
+
+foreach($log in $int){
+if($log.Id -eq 4624){$kind="Logon"}
+elseif($log.Id -eq 4634){$kind="Logoff"}
+"Log Number " + $($log.RecordId) + "(" + $($kind) + "):"
+"______________________________________"
+if($kind -eq "Logon"){
+"Machine Name: " + $($log.MachineName)
+"Username: " + $($log.Properties[1].Value)
+"Domain: " + $($log.Properties[2].Value)
+"Logon Method: " + $($log.Properties[17].Value)
+"Logon Time: " + $($log.TimeCreated)
+" "
+" "
+}
+elseif($kind -eq "Logoff"){
+"Machine Name: " + $($log.MachineName)
+"Logoff Time: " + $($log.TimeCreated)
+" "
+" "
+}
+}
