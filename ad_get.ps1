@@ -1,5 +1,5 @@
 #// Load help
-$help="`n`n/////// ad_get \\\\\\\`n`nCOMMANDS:`n----------`nshow  		--	List all OU's with computers in them.`nselect <number>		--	Select a specific OU or computer to operate in.`nunselect		--	Unselect the selected OU.`nstatus			--	Show the up/down status of computers in the selected OU.`nevents			--	Show logon/logoff events from the selected computer.`nexit/quit		--	Quit ad_get.`n`n"
+$help="`n`n/////// ad_get \\\\\\\`n`nCOMMANDS:`n----------`nshow			--	List all OU's with computers in them.`nselect <number>		--	Select a specific OU or computer to operate in.`nunselect		--	Unselect the selected OU.`n..			--	Go back.`nstatus			--	Show the up/down status of computers in the selected OU.`nevents			--	Show logon/logoff events from the selected computer.`nexit/quit		--	Quit ad_get.`n`n"
 
 #// List all of the Organizational Units with computers in them, adding them to a list for future reference.
 $ou_ls=@{}; $ou_num=0; $ou_out; Get-ADOrganizationalUnit -Filter {Name -like '*'} | foreach-object{$comps=Get-ADComputer -Filter * -Searchbase $_.DistinguishedName; if($comps.count -gt 0){$ou_num++;$ou_ls.Add($ou_num,$comps);$ou_out += $("OU Number $ou_num`n--------------`nRN: " + $_.Name + "`nDN: '" + $_.DistinguishedName + "'`n`n")}}
@@ -51,8 +51,12 @@ while($True)
   elseif($input.StartsWith("select"))
   {
     $testvar=$null
+	if($input -eq "select")
+	{
+	  Write-Host $fail
+	}
 	#// if the selection is numerical, and and in the ou_ls, proceed
-    if([Int32]::TryParse($input.Substring(7), [ref]$testvar) -and ([int32]$input.Substring(7) -ne 0))
+    elseif(([Int32]::TryParse($input.Substring(7), [ref]$testvar) -and ([int32]$input.Substring(7) -ne 0)) -and !($input -eq "select"))
     {
       #// if an ou is selected and a computer is selected, tell the user
 	  if(($ou_selected -gt 0) -and ($comp_selected -gt 0))
@@ -118,10 +122,35 @@ while($True)
     else
     {
       [int]$ou_selected=0
-      $comp_selected=''
+      $comp_selected=0
       $prefix="ad_get>> "
       $colorchange="white"
     }
+  }
+  
+  #// go back
+  elseif($input -eq "..")
+  {
+    #// if an ou isn't selected, tell the user
+    if($ou_selected -eq 0)
+    {
+      $no_ou
+    }
+	#// if an ou is selected, and not a computer deselect the ou
+	elseif(($ou_selected -gt 0) -and ($comp_selected -eq 0))
+	{
+	  $ou_selected=0
+	  $comp_selected=0
+	  $prefix="ad_get>> "
+      $colorchange="white"
+	}
+	#// if both, deselect the computer
+	elseif(($ou_selected -gt 0) -and ($comp_selected -gt 0))
+	{
+	  $comp_selected=0
+	  $colorchange="red"
+	  $prefix=$("ad_get>ou_" + $($ou_selected.ToString()) + ">> ")
+	}
   }
 
   #// status command
