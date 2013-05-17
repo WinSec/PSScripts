@@ -1,47 +1,54 @@
-param([string]$compname)
+param([string]$compname , [string]$howmany)
 
 if($compname.length -eq 0){$compname=Read-Host "`nWhat host do you wish to retrieve logs from?(Type 'localhost', IP Address, NETBIOS, ComputerName, or FQ Domain Name)`n`nGet Logs From"}
+if($howmany.length -eq 0){$howmany=Read-Host "`nHow many of the most recent logs should be retrieved?(Must be greater than or equal to one.)`n`nNumber of Logs"}
 
-$howmany=Read-Host "`nHow many of the most recent logs should be retrieved?(Must be greater than or equal to one.)`n`nNumber of Logs"
-
-if($compname -eq 'localhost'){
-  $logs10 = Get-WinEvent -MaxEvents $howmany -FilterXml "<QueryList><Query Id='0' Path='Security'><Select Path='Security'>*[System[(EventID=4624 or EventID=4634)]] and *[EventData[Data[@Name='LogonType']='10']]</Select></Query></QueryList>"
-  $logs2 = Get-WinEvent -MaxEvents $howmany -FilterXml "<QueryList><Query Id='0' Path='Security'><Select Path='Security'>*[System[(EventID=4624 or EventID=4634)]] and *[EventData[Data[@Name='LogonType']='2']]</Select></Query></QueryList>"
-  $logs3 = Get-WinEvent -MaxEvents $howmany -FilterXml "<QueryList><Query Id='0' Path='Security'><Select Path='Security'>*[System[(EventID=4624 or EventID=4634)]] and *[EventData[Data[@Name='LogonType']='3']]</Select></Query></QueryList>"
+if($compname -eq 'localhost')
+{
+  $logs10 = Get-WinEvent -ErrorAction SilentlyContinue -MaxEvents $howmany -FilterXml "<QueryList><Query Id='0' Path='Security'><Select Path='Security'>*[System[(EventID=4624 or EventID=4634)]] and *[EventData[Data[@Name='LogonType']='10']]</Select></Query></QueryList>"
+  $logs2 = Get-WinEvent -ErrorAction SilentlyContinue -MaxEvents $howmany -FilterXml "<QueryList><Query Id='0' Path='Security'><Select Path='Security'>*[System[(EventID=4624 or EventID=4634)]] and *[EventData[Data[@Name='LogonType']='2']]</Select></Query></QueryList>"
+  $logs3 = Get-WinEvent -ErrorAction SilentlyContinue -MaxEvents $howmany -FilterXml "<QueryList><Query Id='0' Path='Security'><Select Path='Security'>*[System[(EventID=4624 or EventID=4634)]] and *[EventData[Data[@Name='LogonType']='3']]</Select></Query></QueryList>"
 }
-else{
-  $logs10 = Get-WinEvent -ComputerName $compname -MaxEvents $howmany -FilterXml "<QueryList><Query Id='0' Path='Security'><Select Path='Security'>*[System[(EventID=4624 or EventID=4634)]] and *[EventData[Data[@Name='LogonType']='10']]</Select></Query></QueryList>"
-  $logs2 = Get-WinEvent -ComputerName $compname -MaxEvents $howmany -FilterXml "<QueryList><Query Id='0' Path='Security'><Select Path='Security'>*[System[(EventID=4624 or EventID=4634)]] and *[EventData[Data[@Name='LogonType']='2']]</Select></Query></QueryList>"
-  $logs3 = Get-WinEvent -ComputerName $compname -MaxEvents $howmany -FilterXml "<QueryList><Query Id='0' Path='Security'><Select Path='Security'>*[System[(EventID=4624 or EventID=4634)]] and *[EventData[Data[@Name='LogonType']='3']]</Select></Query></QueryList>"
+else
+{
+  $logs10 = Get-WinEvent -ErrorAction SilentlyContinue -ComputerName $compname -MaxEvents $howmany -FilterXml "<QueryList><Query Id='0' Path='Security'><Select Path='Security'>*[System[(EventID=4624 or EventID=4634)]] and *[EventData[Data[@Name='LogonType']='10']]</Select></Query></QueryList>"
+  $logs2 = Get-WinEvent -ErrorAction SilentlyContinue -ComputerName $compname -MaxEvents $howmany -FilterXml "<QueryList><Query Id='0' Path='Security'><Select Path='Security'>*[System[(EventID=4624 or EventID=4634)]] and *[EventData[Data[@Name='LogonType']='2']]</Select></Query></QueryList>"
+  $logs3 = Get-WinEvent -ErrorAction SilentlyContinue -ComputerName $compname -MaxEvents $howmany -FilterXml "<QueryList><Query Id='0' Path='Security'><Select Path='Security'>*[System[(EventID=4624 or EventID=4634)]] and *[EventData[Data[@Name='LogonType']='3']]</Select></Query></QueryList>"
 }
 
-$logobjects=@{}
-
-$count=0
+$logobjects=@{}; $count=0
+if((($logs2.count -eq 0) -and ($logs10.count -eq 0)) -and ($logs3.count -eq 0))
+{
+  Write-Host "`n`nERROR: Failed to establish connection with the host."
+  exit
+}
 
 foreach($log in $logs2)
 {
   $count++
-  if($log.Id -eq 4624){
+  if($log.Id -eq 4624)
+  {
     $props = @{"Id" = $($log.Id);"LogonType" = 2;"SubjectUsername" = $($log.Properties[1].Value);"Time" = $($log.TimeCreated);}
     $object= New-Object -TypeName PSObject -Prop $props
   }
-  elseif($log.Id -eq 4634){
+  elseif($log.Id -eq 4634)
+  {
     $props = @{"Id" = $($log.Id);"LogonType" = 2;"MachineName" = $($log.MachineName);"Time" = $($log.TimeCreated);}
     $object= New-Object -TypeName PSObject -Prop $props
   }
   $logobjects.Add("Log " + $count, $object)
 }
 
-
 foreach($log in $logs10)
 {
   $count++
-  if($log.Id -eq 4624){
+  if($log.Id -eq 4624)
+  {
     $props = @{"Id" = $($log.Id);"LogonType" = 10;"SubjectUsername" = $($log.Properties[1].Value);"Time" = $($log.TimeCreated);}
     $object= New-Object -TypeName PSObject -Prop $props
   }
-  elseif($log.Id -eq 4634){
+  elseif($log.Id -eq 4634)
+  {
     $props = @{"Id" = $($log.Id);"LogonType" = 10;"TargetUsername" = $($log.Properties[1].Value);"Time" = $($log.TimeCreated);}
     $object= New-Object -TypeName PSObject -Prop $props
   }
@@ -51,24 +58,22 @@ foreach($log in $logs10)
 foreach($log in $logs3)
 {
   $count++
-  if($log.Id -eq 4624){
+  if($log.Id -eq 4624)
+  {
     $props = @{"Id" = $($log.Id);"LogonType" = 3;"TargetUsername" = $($log.Properties[5].Value);"LogonProcessName" = $($log.Properties[9].Value);"Time" = $($log.TimeCreated);}
     $object= New-Object -TypeName PSObject -Prop $props
   }
-  elseif($log.Id -eq 4634){
+  elseif($log.Id -eq 4634)
+  {
     $props = @{"Id" = $($log.Id);    "LogonType" = 3;    "TargetUsername" = $($log.Properties[1].Value);    "Time" = $($log.TimeCreated);    }
     $object= New-Object -TypeName PSObject -Prop $props
   }
   $logobjects.Add("Log " + $count, $object)
 }
 
-
 $logobjects= $logobjects.Values | Sort-Object Time -Descending
-
 $lcount=0
 "`n`nLogons and Logoffs:`n____________________________________`n"
-
-
 [int]$countdown=$howmany
 
 foreach($log in $logobjects)
