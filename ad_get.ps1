@@ -2,13 +2,13 @@ Import-Module NetAdapter
 $ErrorActionPreference = "SilentlyContinue"
 
 #// Load help
-$help="`n`n/////// ad_get \\\\\\\`n`nCOMMANDS:`n----------`nrunas <user>		--	Execute commands as the user provided.`nshow			--	List all OU's with computers in them.`nselect <number>		--	Select a specific OU or computer to operate in.`nunselect		--	Unselect the selected OU.`n..			--	Go back.`ntest			--	Show the up/down status of computers in the selected OU.`nstatus			--	Returns the status of the selected computer (Active/Locked).`nnic			--	Show the network adapter information on the selected computer.`ninstalled		--	List the installed software on the selected computer.`ndisk			--	Show disk and partition information on the selected computer.`nevents			--	Show logon/logoff events from the selected computer.`nexit/quit		--	Quit ad_get.`nhelp			--	Display this help screen.`n`n"
+$help="`n`n/////// ad_get \\\\\\\`n`nCOMMANDS:`n----------`nrunas <user>		--	Execute commands as the user provided.`nshow			--	List all OU's with computers in them.`nselect <number>		--	Select a specific OU or computer to operate in.`nunselect		--	Unselect the selected OU.`n..			--	Go back.`ntest			--	Runs the Test-Connection module the selected OU.`nstatus			--	Returns the status of the selected computer (Active/Locked).`nnic			--	Show the network adapter information on the selected computer.`ninstalled		--	List the installed software on the selected computer.`ndisk			--	Show disk and partition information on the selected computer.`nevents			--	Show logon/logoff events from the selected computer.`nexit/quit		--	Quit ad_get.`nhelp			--	Display this help screen.`n`n"
 
 #// List all of the Organizational Units with computers in them, adding them to a list for future reference.
 $ou_ls=@{}; $ou_num=0; $ou_out;   Get-ADOrganizationalUnit -Filter {Name -like '*'} | foreach-object{ $comps=Get-ADComputer -Filter * -Searchbase $_.DistinguishedName; if($comps.count -gt 0){$ou_num++; $ou_ls.Add($ou_num,$comps); $ou_out += $("OU Number $ou_num`n--------------`nRN: " + $_.Name + "`nDN: '" + $_.DistinguishedName + "'`n`n")}}; if($ou_out -eq $null){Write-Host "Could not retrieve information from the Active Directory."; return}
 
 #// Load vars for while loop.
-$prefix="ad_get>> "; $colorchange="white"; $ou_selected=0; $comp_selected=0; $no_ou="`nYou do not have an OU selected.  You can select one by tying 'select' followed by the OU number.`n"; $no_comp="`nYou do not have a computer selected.  You can select one by tying 'select' followed by the computer number.`n"; $fail="That is not a valid selection."; $rpc="`nERROR: Failed to establish connection with the host.`n"; $select_lvl=0; $domain_num=0
+$prefix="ad_get>> "; $colorchange="white"; $ou_selected=0; $comp_selected=0; $no_ou="`nYou do not have an OU selected.  You can select one by tying 'select' followed by the OU number.`n"; $no_comp="`nYou do not have a computer selected.  You can select one by tying 'select' followed by the computer number.`n"; $fail="That is not a valid selection."; $rpc="`nERROR: Failed to establish connection with the host.`n"; $select_lvl=0; $domain_num=0; $nic_running=$False
 
 #// Print Help
 $help
@@ -282,7 +282,16 @@ while($True)
     "nic"
     {
 	  $nic_running=$True
-	  $nic_help = "`n/////// Network Adapter Configuration Editor \\\\\\\`n`nCOMMANDS:`n----------`ninfo			--	Show information on your currently selected adapter.`ndc			--	Show domain controllers.`ndomains			--	Show domains.`nedit ip			--	Change your IP Address and Subnet Mask.`nedit suffix		--	Change DNS suffix.`nedit gate			--	Set the Default Gateway.`nedit dns		--	Set preffered DNS Server address.`nedit adapter		--	Change your currently selected network adapter.`nedit mac		--	Change your MAC Address.`nhelp			--	Display this help screen.`nexit/quit		--	Exit to ad_get.`n"
+	  Write-Host "Please select an interface..." -NoNewLine
+	  Read-Host
+	  netsh interface show interface
+	  $nic_selected = Read-Host "Interface Name "
+	  if((netsh interface show interface name=$nic_selected) -eq "An interface with this name is not registered with the router.")
+	  {
+	    Write-Host "That is an invalid selection."
+		$nic_running=$False
+	  }
+	  $nic_help = "`n/////// Network Adapter Configuration Editor \\\\\\\`n`nCOMMANDS:`n----------`nipconfig		--	Display and change IP info. (All params supported).`nnetsh interface		--	Use netsh to change interface settings.  (All params supported).`ndc			--	Show domain controllers.`ndomains			--	Show domains.`nedit suffix		--	Change DNS suffix.`nedit interface		--	Change your currently selected network adapter.`nedit mac		--	Change your MAC Address.`nhelp			--	Display this help screen.`nexit/quit		--	Exit to ad_get.`n"
 	  $nic_help
 	  $ou_selected = 0
       $comp_selected = 0
@@ -291,13 +300,17 @@ while($True)
 	  {
 		Write-Host "nic_get>> " -NoNewline
 		$nic_input = Read-Host
+		if($nic_input.StartsWith("ipconfig"))
+		{
+		  Invoke-Expression $nic_input
+		  ""
+		}
+		elseif($nic_input.StartsWith("netsh interface"))
+		{
+		  Invoke-Expression $nic_input
+		}
 		switch($nic_input)
 		{
-		  "info"
-		  {
-			ipconfig
-		    Write-Host
-		  }
 		  "domains"
 		  {
 			# Connect to RootDSE
@@ -331,7 +344,6 @@ while($True)
 		  }
 		  "edit suffix"
 		  {
-			
 			$nic_suffix = Read-Host "DNS Suffix "
 			Set-DnsClient -InterfaceIndex 12 -ConnectionSpecificSuffix $nic_suffix
 		  }
@@ -340,27 +352,14 @@ while($True)
 			$nic_mac = Read-Host "MAC Address "
 			Set-NetAdapter -InterfaceDescription B*2 -MacAddress $nic_mac
 		  }
-		  "edit dns"
+		  "edit interface"
 		  {
-			Write-Host "Domain Controllers:`n----------`n"
-			[system.directoryservices.activedirectory.domain]::GetCurrentDomain() | ForEach-Object {$_.DomainControllers} | ForEach-Object {$_.Name}
-			$NIC=Get-WmiObject -Class Win32_NetworkAdapterConfiguration -Filter IPEnabled=TRUE
-			$DNSServers = Read-Host "`nDNS Server Address "
-			$NIC.SetDNSServerSearchOrder($DNSServers)
-		  }
-	      "edit ip"
-		  {
-			Get-NetIPAddress -InterfaceAlias $nic_adapter | Select-Object "IPAddress"
-			$NIC=Get-WmiObject -Class Win32_NetworkAdapterConfiguration -Filter IPEnabled=TRUE
-			$IP = Read-Host "`nNew IP "
-			$Subnet = Read-Host "New Subnet "
-			$NIC.EnableStatic($IP,$Subnet)
-		  }
-		  "edit gate"
-		  {
-			$NIC=Get-WmiObject -Class Win32_NetworkAdapterConfiguration -Filter IPEnabled=TRUE
-			$gate=Read-Host "`nDefault Gateway "
-			$NIC.SetGateways($gate, 1)
+		  	netsh interface show interface
+	        $nic_selected = Read-Host "Interface Name "
+	        if((netsh interface show interface name=$nic_selected) -eq "An interface with this name is not registered with the router.")
+	        {
+	          Write-Host "That is an invalid selection."
+		    }
 		  }
 		  "help"
 		  {
@@ -369,10 +368,40 @@ while($True)
 	      "exit"
 	      {
 			$nic_running=$False
+			switch($select_lvl)
+			{
+			  2
+			  {
+			    $colorchange="cyan"
+			  }
+			  1
+			  {
+			    $colorchange="red"
+			  }
+			  0
+			  {
+			    $colorchange="white"
+			  }
+			}
 		  }
 	      "quit"
 		  {
             $nic_running=$False
+			switch($select_lvl)
+			{
+			  2
+			  {
+			    $colorchange="cyan"
+			  }
+			  1
+			  {
+			    $colorchange="red"
+			  }
+			  0
+			  {
+			    $colorchange="white"
+			  }
+			}
 		  }
 	    }
 	  }
