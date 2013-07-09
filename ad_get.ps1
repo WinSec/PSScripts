@@ -2,7 +2,7 @@ Import-Module NetAdapter
 $ErrorActionPreference = "SilentlyContinue"
 
 #// Load help
-$help="`n`n/////// ad_get \\\\\\\`n`nCOMMANDS:`n----------`nrunas <user>		--	Execute commands as the user provided.`nshow			--	List all OU's with computers in them.`nselect <number>		--	Select a specific OU or computer to operate in.`nunselect		--	Unselect the selected OU.`n..			--	Go back.`ntest			--	Runs the Test-Connection module the selected OU.`nstatus			--	Returns the status of the selected computer (Active/Locked).`nnic			--	Show the network adapter information on the selected computer.`ninstalled		--	List the installed software on the selected computer.`ndisk			--	Show disk and partition information on the selected computer.`nevents			--	Show logon/logoff events from the selected computer.`nexit/quit		--	Quit ad_get.`nhelp			--	Display this help screen.`n`n"
+$help="`n`n/////// ad_get \\\\\\\`n`nCOMMANDS:`n----------`nrunas <user>        --    Execute commands as the user provided.`nshow            --    List all OU's with computers in them.`nselect <number>        --    Select a specific OU or computer to operate in.`nunselect        --    Unselect the selected OU.`n..            --    Go back.`ntest            --    Runs the Test-Connection module the selected OU.`nstatus            --    Returns the status of the selected computer (Active/Locked).`nnic            --    Show the network adapter information on the selected computer.`ninstalled        --    List the installed software on the selected computer.`ndisk            --    Show disk and partition information on the selected computer.`nevents            --    Show logon/logoff events from the selected computer.`nexit/quit        --    Quit ad_get.`nhelp            --    Display this help screen.`n`n"
 
 #// List all of the Organizational Units with computers in them, adding them to a list for future reference.
 $ou_ls=@{}; $ou_num=0; $ou_out;   Get-ADOrganizationalUnit -Filter {Name -like '*'} | foreach-object{ $comps=Get-ADComputer -Filter * -Searchbase $_.DistinguishedName; if($comps.count -gt 0){$ou_num++; $ou_ls.Add($ou_num,$comps); $ou_out += $("OU Number $ou_num`n--------------`nRN: " + $_.Name + "`nDN: '" + $_.DistinguishedName + "'`n`n")}}; if($ou_out -eq $null){Write-Host "Could not retrieve information from the Active Directory."; return}
@@ -51,7 +51,7 @@ while($True)
       {
         #// if an ou is selected, along with a comp, show the selected comp
         2
-  	     {
+        {
           Write-Host "`n`nComputer Number"$comp_selected"`n----------`nHN:  "$($comp_ls.$comp_selected.DNSHostName)"`nDN:  '"$($comp_ls.$comp_selected.DistinguishedName)"'`n`n"
         }
         #// if an ou is selected, show the computers
@@ -75,16 +75,16 @@ while($True)
     "unselect"
     {
       if($select_lvl -eq 0)
-	  {
-	    $no_ou
-	  }
-	  else
-	  {
-	    [int]$ou_selected=0
+      {
+        $no_ou
+      }
+      else
+      {
+        [int]$ou_selected=0
         $comp_selected=0
         $prefix="ad_get>> "
         $colorchange="white"
-	  }
+      }
     }
   
     #// go back
@@ -277,134 +277,122 @@ while($True)
         }
       }
     }
-	
+    
     #// nic command
     "nic"
     {
-	  $nic_running=$True
-	  Write-Host "Please select an interface..." -NoNewLine
-	  Read-Host
-	  netsh interface show interface
-	  $nic_selected = Read-Host "Interface Name "
-	  if((netsh interface show interface name=$nic_selected) -eq "An interface with this name is not registered with the router.")
-	  {
-	    Write-Host "That is an invalid selection."
-		$nic_running=$False
-	  }
-	  $nic_help = "`n/////// Network Adapter Configuration Editor \\\\\\\`n`nCOMMANDS:`n----------`nipconfig		--	Display and change IP info. (All params supported).`nnetsh interface		--	Use netsh to change interface settings.  (All params supported).`ndc			--	Show domain controllers.`ndomains			--	Show domains.`nedit suffix		--	Change DNS suffix.`nedit interface		--	Change your currently selected network adapter.`nedit mac		--	Change your MAC Address.`nhelp			--	Display this help screen.`nexit/quit		--	Exit to ad_get.`n"
-	  $nic_help
-	  $ou_selected = 0
-      $comp_selected = 0
+      $nic_running=$True
+      Write-Host "Please select an interface..." 
+      netsh interface show interface
+      $nic_selected = Read-Host "Interface Name "
+      if((netsh interface show interface name $nic_selected) -eq "An interface with this name is not registered with the router.")
+      {
+        Write-Host "That is an invalid selection."
+        $nic_running=$False
+      }
+      $nic_help = "`n/////// Network Adapter Configuration Editor \\\\\\\`n`nCOMMANDS:`n----------`nipconfig        --    Display and change IP info. (All params supported).`nping            --    ICMP Echo request utility. (All params supported).`nnetsh interface        --    Use netsh to change interface settings.  (All params supported).`nstatic            --    Set static IP settings.`ndhcp            --    Receive IP settings via DHCP.`ndc            --    Show domain controllers.`ndomains            --    Show domains.`nedit suffix        --    Change DNS suffix.`nedit interface        --    Change your currently selected network adapter.`nhelp            --    Display this help screen.`nexit/quit        --    Exit to ad_get.`n"
+      $nic_help
       $colorchange = "white"
-	  while($nic_running -eq $True)
-	  {
-		Write-Host "nic_get>> " -NoNewline
-		$nic_input = Read-Host
-		if($nic_input.StartsWith("ipconfig"))
-		{
-		  Invoke-Expression $nic_input
-		  ""
-		}
-		elseif($nic_input.StartsWith("netsh interface"))
-		{
-		  Invoke-Expression $nic_input
-		}
-		switch($nic_input)
-		{
-		  "domains"
-		  {
-			# Connect to RootDSE
+      while($nic_running -eq $True)
+      {
+        Write-Host "nic_get>> " -NoNewline
+        $nic_input = Read-Host
+        if(($nic_input.StartsWith("ipconfig")) -or ($nic_input.StartsWith("netsh interface")) -or ($nic_input.StartsWith("ping")))
+        {
+          Invoke-Expression $nic_input
+        }
+        switch($nic_input)
+        {
+          "static"
+          {
+            Write-Host "Here are your current settings."
+            netsh interface ipv4 show address $nic_selected
+            Write-Host "FILL ALL FIELDS:"
+            $static_ip=Read-Host "IP Addr "
+            $static_sub=Read-Host "Subnet "
+            $static_gate=Read-Host "Gateway "
+            netsh interface ipv4 set address $nic_selected static $static_ip $static_sub $static_gate
+          }
+          "dhcp"
+          {
+            netsh interface ipv4 set address $nic_selected dhcp
+          }
+          "domains"
+          {
             $rootDSE = [ADSI]"LDAP://RootDSE"
- 
-            # Connect to the Configuration Naming Context
             $configSearchRoot = [ADSI]("LDAP://" + `
             $rootDSE.Get("configurationNamingContext"))
- 
-            # Configure the filter
             $filter = "(NETBIOSName=*)"
- 
-            # Search for all partitions where the NetBIOSName is set
             $configSearch = New-Object `
             DirectoryServices.DirectorySearcher($configSearchRoot, $filter)
- 
-            # Configure search to return dnsroot and ncname attributes
-            $retVal = $configSearch.PropertiesToLoad.Add("dnsroot")
-            $retVal = $configSearch.PropertiesToLoad.Add("ncname")
- 
+            $rv = $configSearch.PropertiesToLoad.Add("dnsroot")
+            $rv = $configSearch.PropertiesToLoad.Add("ncname")
             $csfa=$configSearch.FindAll()
-			Write-Host "`nDomains`n----------"
-		    $csfa.Properties.dnsroot
-		    ""
-		  }
-		  "dc"
-		  {
+            Write-Host "`nDomains`n----------"
+            $csfa.Properties.dnsroot
+            ""
+          }
+          "dc"
+          {
             Write-Host "`nDomain Controllers:`n----------"
             [system.directoryservices.activedirectory.domain]::GetCurrentDomain() | ForEach-Object {$_.DomainControllers} | ForEach-Object {$_.Name}
-			Write-Host ""
-		  }
-		  "edit suffix"
-		  {
-			$nic_suffix = Read-Host "DNS Suffix "
-			Set-DnsClient -InterfaceIndex 12 -ConnectionSpecificSuffix $nic_suffix
-		  }
-		  "edit mac"
-		  {
-			$nic_mac = Read-Host "MAC Address "
-			Set-NetAdapter -InterfaceDescription B*2 -MacAddress $nic_mac
-		  }
-		  "edit interface"
-		  {
-		  	netsh interface show interface
-	        $nic_selected = Read-Host "Interface Name "
-	        if((netsh interface show interface name=$nic_selected) -eq "An interface with this name is not registered with the router.")
-	        {
-	          Write-Host "That is an invalid selection."
-		    }
-		  }
-		  "help"
-		  {
-			$nic_help
-		  }
-	      "exit"
-	      {
-			$nic_running=$False
-			switch($select_lvl)
-			{
-			  2
-			  {
-			    $colorchange="cyan"
-			  }
-			  1
-			  {
-			    $colorchange="red"
-			  }
-			  0
-			  {
-			    $colorchange="white"
-			  }
-			}
-		  }
-	      "quit"
-		  {
+            Write-Host ""
+          }
+          "edit suffix"
+          {
+            $nic_suffix = Read-Host "DNS Suffix "
+            Set-DnsClient -InterfaceIndex 12 -ConnectionSpecificSuffix $nic_suffix
+          }
+          "edit interface"
+          {
+            netsh interface show interface
+            $nic_selected = Read-Host "`nInterface Name "
+            Write-Host "Now using NIC : $nic_selected"
+          }
+          "help"
+          {
+            $nic_help
+          }
+          "exit"
+          {
             $nic_running=$False
-			switch($select_lvl)
-			{
-			  2
-			  {
-			    $colorchange="cyan"
-			  }
-			  1
-			  {
-			    $colorchange="red"
-			  }
-			  0
-			  {
-			    $colorchange="white"
-			  }
-			}
-		  }
-	    }
-	  }
+            switch($select_lvl)
+            {
+              2
+              {
+                $colorchange="cyan"
+              }
+              1
+              {
+                $colorchange="red"
+              }
+              0
+              {
+                $colorchange="white"
+              }
+            }
+          }
+          "quit"
+          {
+            $nic_running=$False
+            switch($select_lvl)
+            {
+              2
+              {
+                $colorchange="cyan"
+              }
+              1
+              {
+                $colorchange="red"
+              }
+              0
+              {
+                $colorchange="white"
+              }
+            }
+          }
+        }
+      }
     }
   }
   
