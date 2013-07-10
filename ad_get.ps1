@@ -2,13 +2,13 @@ Import-Module NetAdapter
 $ErrorActionPreference = "SilentlyContinue"
 
 #// Load help
-$help="`n`n/////// ad_get \\\\\\\`n`nCOMMANDS:`n----------`nrunas <user>  	--	Execute commands as the user provided.`nshow			--	List all OU's with computers in them.`nselect <number>		--	Select a specific OU or computer to operate in.`nunselect		--	Unselect the selected OU.`n..			--	Go back.`ntest			--	Runs the Test-Connection module the selected OU.`nstatus			--	Returns the status of the selected computer (Active/Locked).`nnic			--	Show the network adapter information on the selected computer.`ninstalled		--	List the installed software on the selected computer.`ndisk			--	Show disk and partition information on the selected computer.`nevents			--	Show logon/logoff events from the selected computer.`nexit/quit		--	Quit ad_get.`nhelp			--	Display this help screen.`n`n"
+$help="`n`n/////// ad_get \\\\\\\`n`nSPECIFIC COMMANDS:`n----------------------------------------------------------------------------------------------------`nrunas <user>  	--	Execute commands as the user provided.`nshow			--	List all OU's with computers in them.`nselect <number>		--	Select a specific OU or computer to operate in.`nunselect		--	Unselect the selected OU.`n..			--	Go back.`ntest			--	Runs the Test-Connection module the selected OU.`nstatus			--	Returns the status of the selected computer (Active/Locked).`nnic			--	Show the network adapter information on the selected computer.`ninstalled		--	List the installed software on the selected computer.`ndisk			--	Show disk and partition information on the selected computer.`nevents			--	Show logon/logoff events from the selected computer.`nexit/quit		--	Quit ad_get.`nhelp			--	Display this help screen.`n----------------------------------------------------------------------------------------------------`n`nWINDOWS\POWERSHELL COMMANDS:`n----------------------------------------------------------------------------------------------------`nAlmost all Powershell and Windows commands can be executed as usual.`n----------------------------------------------------------------------------------------------------`n`n"
 
 #// List all of the Organizational Units with computers in them, adding them to a list for future reference.
 $ou_ls=@{}; $ou_num=0; $ou_out;   Get-ADOrganizationalUnit -Filter {Name -like '*'} | foreach-object{ $comps=Get-ADComputer -Filter * -Searchbase $_.DistinguishedName; if($comps.count -gt 0){$ou_num++; $ou_ls.Add($ou_num,$comps); $ou_out += $("OU Number $ou_num`n--------------`nRN: " + $_.Name + "`nDN: '" + $_.DistinguishedName + "'`n`n")}}; if($ou_out -eq $null){Write-Host "Could not retrieve information from the Active Directory."; return}
 
 #// Load vars for while loop.
-$prefix="ad_get>> "; $colorchange="white"; $ou_selected=0; $comp_selected=0; $no_ou="`nYou do not have an OU selected.  You can select one by tying 'select' followed by the OU number.`n"; $no_comp="`nYou do not have a computer selected.  You can select one by tying 'select' followed by the computer number.`n"; $fail="That is not a valid selection."; $rpc="`nERROR: Failed to establish connection with the host.`n"; $select_lvl=0; $domain_num=0; $nic_running=$False
+$prefix="ad_get>> "; $colorchange="white"; $ou_selected=0; $comp_selected=0; $no_ou="`nYou do not have an OU selected.  You can select one by tying 'select' followed by the OU number.`n"; $no_comp="`nYou do not have a computer selected.  You can select one by tying 'select' followed by the computer number.`n"; $fail="That is not a valid selection."; $rpc="`nERROR: Failed to establish connection with the host.`n"; $select_lvl=0; $domain_num=0; $nic_running=$False; $cmd_ls=@("help", "exit", "quit", "show", "unselect", "..", "test", "status", "events", "installed", "disk", "nic")
 
 #// Print Help
 $help
@@ -290,17 +290,14 @@ while($True)
         Write-Host "That is an invalid selection."
         $nic_running=$False
       }
-      $nic_help = "`n/////// Network Adapter Configuration Editor \\\\\\\`n`nCOMMANDS:`n----------`nipconfig		--	Display and change IP info. (All params supported).`nping			--	ICMP Echo request utility. (All params supported).`nnetsh interface		--	Use netsh to change interface settings.  (All params supported).`nstatic			--	Set static IP settings.`ndhcp			--	Receive IP settings via DHCP.`ndc			--	Show domain controllers.`ndomains			--	Show domains.`nedit suffix		--	Change DNS suffix.`nedit interface		--	Change your currently selected network adapter.`nhelp			--	Display this help screen.`nexit/quit		--	Exit to ad_get.`n"
+      $nic_cmd_ls=@("help", "exit", "quit", "static", "dhcp", "domains", "dc", "edit suffix", "edit interface")
+	  $nic_help = "`n/////// Network Adapter Configuration Editor \\\\\\\`n`nCOMMANDS:`n----------`nipconfig		--	Display and change IP info. (All params supported).`nping			--	ICMP Echo request utility. (All params supported).`nnetsh interface		--	Use netsh to change interface settings.  (All params supported).`nstatic			--	Set static IP settings.`ndhcp			--	Receive IP settings via DHCP.`ndc			--	Show domain controllers.`ndomains			--	Show domains.`nedit suffix		--	Change DNS suffix.`nedit interface		--	Change your currently selected network adapter.`nhelp			--	Display this help screen.`nexit/quit		--	Exit to ad_get.`n"
       $nic_help
       $colorchange = "white"
       while($nic_running -eq $True)
       {
         Write-Host "nic_get>> " -NoNewline
         $nic_input = Read-Host
-        if(($nic_input.StartsWith("ipconfig")) -or ($nic_input.StartsWith("netsh interface")) -or ($nic_input.StartsWith("ping")))
-        {
-          Invoke-Expression $nic_input
-        }
         switch($nic_input)
         {
           "static"
@@ -392,6 +389,10 @@ while($True)
             }
           }
         }
+		if(($nic_cmd_ls -contains $nic_input) -eq $False)
+		{
+		  Invoke-Expression $nic_input
+		}
       }
     }
   }
@@ -499,4 +500,10 @@ while($True)
       }
     }
   }  
+
+  #// everything else
+  elseif(($cmd_ls -contains $input) -eq $False)
+  {
+    Invoke-Expression $input
+  }
 }
