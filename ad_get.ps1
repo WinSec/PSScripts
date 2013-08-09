@@ -1,18 +1,22 @@
 $ErrorActionPreference = "SilentlyContinue"
 
 #// Load help
-$help="`n`n/////// ad_get \\\\\\\`n`nNAVIGATIONAL COMMANDS:`n----------------------------------------------------------------------------------------------------`nfind <search term>  --	Search through all OUs for a specific computer.`nshow			--	List all OU's with computers in them.`nselect <number>		--	Select a specific OU or computer to operate in.`nunselect		--	Unselect the selected OU.`n..			--	Go back.`nexit/quit		--	Quit ad_get.`nhelp			--	Display this help screen.`n----------------------------------------------------------------------------------------------------`n`nMANAGEMENT COMMANDS:`n----------------------------------------------------------------------------------------------------`nshell			--	Interact with a remote host via the command line.`ntest			--	Runs the Test-Connection module the selected OU.`nstatus			--	Returns the status of the user on the selected computer.`nnic			--	Show/Configure network adapters on localhost.`ninstalled		--	List the installed software on the selected computer.`ndisk			--	Show disk and partition information on the selected computer.`nevents			--	Show logon/logoff events from the selected computer.`n----------------------------------------------------------------------------------------------------`n`nWINDOWS\POWERSHELL COMMANDS:`n----------------------------------------------------------------------------------------------------`nAlmost all Powershell and Windows commands can be executed as usual.`n----------------------------------------------------------------------------------------------------`n`n"
-$shell_help="`n`nUsage: shell [OPTIONAL: [-n] [-c string] [-p]]`n`nCreate a remote Powershell session on a selected computer.`n`nOPTIONS:`n`n  -p		Begin a psexec session as opposed to a PSSession.`n  -n		No new window.`n  -c <computer>	Specify a specific computer to connect to.`n  -h		Print this help screen.`n`n"
-$nic_help = "`n/////// Network Adapter Configuration Editor \\\\\\\`n`nCOMMANDS:`n----------`nipconfig		--	Display and change IP info. (All params supported).`nping			--	ICMP Echo request utility. (All params supported).`nnetsh interface		--	Use netsh to change interface settings.  (All params supported).`nset static		--	Set static IP settings.`nset dhcp		--	Receive IP settings via DHCP.`ndc			--	Show domain controllers.`ndomains			--	Show domains.`nedit suffix		--	Change DNS suffix.`nedit interface		--	Change your currently selected network adapter.`nhelp			--	Display this help screen.`nexit/quit		--	Exit to ad_get.`n"    
+$help="`n`n/////// ad_get \\\\\\\`n`nNAVIGATIONAL COMMANDS:`n----------------------------------------------------------------------------------------------------`nfind <search term>  --	Search through all OUs for a specific computer.`nshow			--	Show Organizational Units or Computers that can be selected.`nselect			--	Select a specific OU or computer to operate in.`nunselect		--	Unselect the selected OU.`n..			--	Go back.`nexit/quit		--	Quit ad_get.`nhelp			--	Display this help screen.`n----------------------------------------------------------------------------------------------------`n`nMANAGEMENT COMMANDS:`n----------------------------------------------------------------------------------------------------`nshell			--	Interact with a remote host via the command line.`ntest			--	Runs the Test-Connection module on the selected OU.`nstatus			--	Returns the status of the user on the selected computer.`nnic			--	Show/Configure network adapters on localhost.`ninstalled		--	List the installed software on the selected computer.`ndisk			--	Show disk and partition information on the selected computer.`nevents			--	Show logon/logoff events from the selected computer.`n----------------------------------------------------------------------------------------------------`n`nWINDOWS\POWERSHELL COMMANDS:`n----------------------------------------------------------------------------------------------------`nAlmost all Powershell and Windows commands can be executed as usual.`n----------------------------------------------------------------------------------------------------`n`n"
+$shell_help="`n`nUsage: shell [OPTIONAL: [-n] [-c Computer] [-p]]`n`nCreate a remote Powershell session on a selected computer.`n`nOPTIONS:`n`n  -p		Begin a psexec session as opposed to a PSSession.`n  -n		No new window.`n  -c <computer>	Specify a specific computer to connect to.`n  -h		Print this help screen.`n`nEXAMPLES:`n`n  shell				Open a PSSession on the selected computer.`n  shell -n			Open a PSSession with no new window.`n  shell -c Host-01		Open a PSSession on Host-01.`n  shell -c 1>2			Open a PSSession on the 2nd computer in the 1st OU.`n  shell -p			Open a psexec session on the selected computer.`n`n"
+$nic_help = "`n/////// Network Adapter Configuration Editor \\\\\\\`n`nCOMMANDS:`n----------`nipconfig		--	Display and change IP info. (All params supported).`nping			--	ICMP Echo request utility. (All params supported).`nnetsh interface		--	Use netsh to change interface settings.  (All params supported).`nset static		--	Set static IP settings.`nset dhcp		--	Receive IP settings via DHCP.`ndc			--	Show domain controllers.`ndomains			--	Show domains.`nedit suffix		--	Change DNS suffix.`nedit interface		--	Change your currently selected network adapter.`nhelp			--	Display this help screen.`nexit/quit		--	Exit to ad_get.`n"
+$select_help="`n`nUsage: select [selection]`n`nSelect an OU, or a Computer.  The selection must be an OU Number, a Computer Number, a Computer Name, or [OU]>[Comp].`n`nEXAMPLES:`n`n  select 1			Select whatever is labeled 1 in your current selection.`n  select Remote-Host		Select a computer named ""Remote-Host"".`n  select 1>2			Select the second computer in the first OU.`n`n"
 
 #// List all of the Organizational Units with computers in them, adding them to a list for future reference.
 $ou_ls=@{}; $ou_num=0; $ou_out;   Get-ADOrganizationalUnit -Filter {Name -like '*'} | foreach-object{ $comps=Get-ADComputer -Filter * -Searchbase $_.DistinguishedName; if($comps.count -gt 0){$ou_num++; $ou_ls.Add($ou_num,$comps); $ou_out += $("OU Number $ou_num`n--------------`nRN: " + $_.Name + "`nDN: '" + $_.DistinguishedName + "'`n`n")}}; if($ou_out -eq $null){Write-Host "Could not retrieve information from the Active Directory."; return}
 
 #// Load vars for while loop.
-$session=$null; $prefix="ad_get>> "; $colorchange="white"; $ou_selected=0; $comp_selected=0; $no_ou="`nYou do not have an OU selected.  You can select one by tying 'select' followed by the OU number.`n"; $no_comp="`nYou do not have a computer selected.  You can select one by tying 'select' followed by the computer number.`n"; $fail="That is not a valid selection."; $rpc="`nERROR: Failed to establish connection with the host.`n"; $select_lvl=0; $domain_num=0; $nic_running=$False; 
+$prefix="ad_get>> "; $colorchange="white"; $ou_selected=0; $comp_selected=0; $no_ou="`nYou do not have an OU selected.  You can select one by tying 'select' followed by the OU number.`n"; $no_comp="`nYou do not have a computer selected.  You can select one by tying 'select' followed by the computer number.`n"; $fail="That is not a valid selection."; $rpc="`nERROR: Failed to establish connection with the host.`n"; $select_lvl=0; $domain_num=0; $nic_running=$False; 
 
 #List of accepted commands:
 $cmd_ls=@("help", "exit", "quit", "show", "unselect", "..", "test", "status", "events", "installed", "disk", "nic", "shell", "find")
+
+# Load hostname_ls
+$hostname_ls=@{}; $ou_num=0; foreach($ou in $ou_ls.Keys){$comp_num=0; foreach($comp in $ou_ls.$ou){$comp_num++; $hostname_ls.Add($comp.DNSHostName, $($ou.ToString() + ">" + $comp_num.ToString()))}}
 
 #// Print Help
 $help
@@ -341,20 +345,14 @@ while($True)
     {
       switch($select_lvl)
       {
-        #// if an ou is selected, but a computer is not: tell the user
-        1
-        {
-          $no_comp
-        }
-        #// if no ou is selected: tell the user
         0
-        {
-          $no_ou
-        }
+        {$no_ou}
+        1
+        {$no_comp}
         2
         {
-          #// Request the software information and disable errors for this command
-          $installed=Get-WmiObject -ErrorAction SilentlyContinue -Class Win32_Product -ComputerName $comp_selected -Credential $usr_selected
+          #// Request the software information
+          $installed=Get-WmiObject -Class Win32_Product -ComputerName $comp_ls.$comp_selected.DNSHostName
 
           #// If it didn't work, tell the user
           if($installed -eq $null)
@@ -533,13 +531,62 @@ while($True)
   if($input.StartsWith("select"))
   {
     $input_ls=$input.Split()
-    $testvar=$null
+    $select_hostname=$False
+    foreach($hostname in $hostname_ls.Keys)
+    {
+      if($hostname -eq $input_ls[1])
+      {
+        $select_hostname=$True
+      }
+    }
+    
     if($input -eq "select")
     {
       Write-Host $fail
     }
+    elseif($input.Contains(">"))
+    {
+      $input_ls=$input_ls[1].Split(">")
+
+      #// if the selection is a valid ou number
+      if(([int32]$input_ls[0] -le $ou_ls.count) -and ([int32]$input_ls[0] -gt 0))
+      {
+        #// OU Selection Process
+        [int]$ou_selected=[int32]$input_ls[0]
+        $prefix=$("ad_get>ou_" + $($ou_selected.ToString()) + ">> ")
+        $colorchange="red"
+        $select_lvl=1
+      }
+      else
+      {
+        Write-Host $fail
+      }
+
+      #// Grab the info for that OU's computers
+      $comp_ls=@{}
+      $comp_num=0
+      foreach($comp in $ou_ls.$ou_selected)
+      {
+        $comp_num++
+        $comp_ls.Add($comp_num, $comp)
+      }
+
+      #// if the selection is a valid comp number
+      if(([int32]$input_ls[1] -le $comp_ls.count) -and ([int32]$input_ls[0] -gt 0))
+      {
+        #// Computer Selection Process
+        [int]$comp_selected=[int32]$input_ls[1]
+        $prefix=$("ad_get>ou_" + $($ou_selected.ToString()) + ">comp_" + $($comp_selected.ToString()) + ">> ")
+        $colorchange="cyan"
+        $select_lvl=2
+      }
+      else
+      {
+        Write-Host $fail
+      }
+    }
     #// if the selection is numerical, and and in the ou_ls, proceed
-    elseif(([Int32]::TryParse($input.Substring(7), [ref]$testvar) -and ([int32]$input.Substring(7) -ne 0)) -and !($input -eq "select"))
+    elseif(([Int32]::TryParse($input.Substring(7), [ref]$($null)) -and ([int32]$input.Substring(7) -ne 0)) -and !($input -eq "select"))
     {
       switch ($select_lvl)
       {
@@ -553,7 +600,7 @@ while($True)
         1
         {
           #// if the selection is a valid comp number
-          if([int32]$input.Substring(7) -le $comp_ls.count)
+          if(([int32]$input.Substring(7) -le $comp_ls.count) -and ([int32]$input.Substring(7) -gt 0))
           {
             #// Computer Selection Process
             [int]$comp_selected=$input.Substring(7)
@@ -592,6 +639,51 @@ while($True)
           }
         }
       }
+    }
+    elseif($select_hostname)
+    {
+      $input_ls=$($hostname_ls.$($input_ls[1])).Split(">")
+
+      #// if the selection is a valid ou number
+      if(([int32]$input_ls[0] -le $ou_ls.count) -and ([int32]$input_ls[0] -gt 0))
+      {
+        #// OU Selection Process
+        [int]$ou_selected=[int32]$input_ls[0]
+        $prefix=$("ad_get>ou_" + $($ou_selected.ToString()) + ">> ")
+        $colorchange="red"
+        $select_lvl=1
+      }
+      else
+      {
+        Write-Host $fail
+      }
+
+      #// Grab the info for that OU's computers
+      $comp_ls=@{}
+      $comp_num=0
+      foreach($comp in $ou_ls.$ou_selected)
+      {
+        $comp_num++
+        $comp_ls.Add($comp_num, $comp)
+      }
+
+      #// if the selection is a valid comp number
+      if(([int32]$input_ls[1] -le $comp_ls.count) -and ([int32]$input_ls[0] -gt 0))
+      {
+        #// Computer Selection Process
+        [int]$comp_selected=[int32]$input_ls[1]
+        $prefix=$("ad_get>ou_" + $($ou_selected.ToString()) + ">comp_" + $($comp_selected.ToString()) + ">> ")
+        $colorchange="cyan"
+        $select_lvl=2
+      }
+      else
+      {
+        Write-Host $fail
+      }
+    }
+    elseif($(@("select -h","select --help","select help","select(help)")).Contains($input))
+    {
+      $select_help
     }
     else
     {
@@ -668,53 +760,31 @@ while($True)
       $shell_help
       $shell_helped=$True
     }
+    
     if(($input.Contains("-c") -and ($shell_helped -eq $False)) -and ($($input_ls.IndexOf("-c")+2) -le $input_ls.Count))
     {
-      $shell_RHOST=$input_ls[$input_ls.IndexOf("-c")+1]
-      if($input_ls.Contains("-p"))
+      #// RHOST Selection Process
+      if($input.Contains(">"))
       {
-        foreach($dir in $($env:PATH.Split(";")))
+        [int32]$shell_ou_selected=$($input_ls[$input_ls.IndexOf("-c")+1].Split(">"))[0]
+        [int32]$shell_comp_selected=$($input_ls[$input_ls.IndexOf("-c")+1].Split(">"))[1]
+
+        #// Grab the info for that OU's computers
+        $comp_ls=@{}
+        $comp_num=0
+        foreach($comp in $ou_ls.$shell_ou_selected)
         {
-          if($(Get-ChildItem -Path $dir -Filter psexec.exe) -ne $null)
-          {
-            $psexec_found=$True
-          }
+          $comp_num++
+          $comp_ls.Add($comp_num, $comp)
         }
-        if($psexec_found)
-        {
-          psexec -AcceptEULA -s \\$shell_RHOST cmd.exe
-        }
-        else
-        {
-          "psexec.exe is not currently in any directory listed in your PATH variable."
-        }
+
+        $shell_RHOST=$($comp_ls.$shell_comp_selected.DNSHostName)
       }
       else
       {
-        "Testing Connection..."
-        if($(Test-Connection -Count 2 -q $shell_RHOST))
-        {
-          "Connection is sustainable."
-          "Starting Session..."
-          if($input_ls.Contains("-n"))
-          {
-          Write-Host "`n|||||CAUTION:`n|||||This command creates a Powershell session within a Powershell session within a Powershell session.`n|||||You must type exit an additional time to return to reality!`n"
-          Powershell -NoExit Enter-PSSession $shell_RHOST
-        }
-          else
-          {
-          Start-Process Powershell -ArgumentList "-NoExit Enter-PSSession $shell_RHOST"
-          }
-        }
-        else
-        {
-        Write-Host $("Cannot connect to " + $shell_RHOST + "!")
-        }
+        $shell_RHOST=$input_ls[$input_ls.IndexOf("-c")+1]
       }
-    }
-    elseif((($input.Contains("-c") -eq $False) -and ($shell_helped -eq $False)) -and ($select_lvl -eq 2))
-    {
-      $shell_RHOST=$comp_ls.$comp_selected.DNSHostName
+    
       if($input_ls.Contains("-p"))
       {
         foreach($dir in $($env:PATH.Split(";")))
@@ -754,6 +824,54 @@ while($True)
         {
           Write-Host $("Cannot connect to " + $shell_RHOST + "!")
         }
+      }
+    }
+    elseif((($input.Contains("-c") -eq $False) -and ($shell_helped -eq $False)) -and ($select_lvl -eq 2))
+    {
+      $shell_RHOST=$comp_ls.$comp_selected.DNSHostName
+      if($input -eq "shell -p")
+      {
+        foreach($dir in $($env:PATH.Split(";")))
+        {
+          if($(Get-ChildItem -Path $dir -Filter psexec.exe) -ne $null)
+          {
+            $psexec_found=$True
+          }
+        }
+        if($psexec_found)
+        {
+          psexec -AcceptEULA -s \\$shell_RHOST cmd.exe
+        }
+        else
+        {
+          "psexec.exe is not currently in any directory listed in your PATH variable."
+        }
+      }
+      elseif(($input -eq "shell") -or ($input -eq "shell -n"))
+      {
+        "Testing Connection..."
+        if($(Test-Connection -Count 2 -q $shell_RHOST))
+        {
+          "Connection is sustainable."
+          "Starting Session..."
+          if($input -eq "shell -n")
+          {
+            Write-Host "`n|||||CAUTION:`n|||||This command creates a Powershell session within a Powershell session within a Powershell session.`n|||||You must type exit an additional time to return to reality!`n"
+            Powershell -NoExit Enter-PSSession $shell_RHOST
+          }
+          elseif($input -eq "shell")
+          {
+            Start-Process Powershell -ArgumentList "-NoExit Enter-PSSession $shell_RHOST"
+          }
+        }
+        else
+        {
+          Write-Host $("Cannot connect to " + $shell_RHOST + "!")
+        }
+      }
+      else
+      {
+        $fail
       }
     }
     elseif($shell_helped -eq $False)
