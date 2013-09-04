@@ -1,16 +1,17 @@
 <#
 .SYNOPSIS
     Get currently logged on users, remotely or locally.
+
 .DESCRIPTION
     Get-LoggedOnUsers uses the HKEY_USERS registry key to determine currently logged on users.  It goes through each SID in HKEY_USERS and prints it's corresponding username to the screen.
-    
+
 	PARAMETERS:
 	-----------
 	[-ComputerName]     -     Specify a remote machine to get logged on users from.
 	[-File]             -     Specify a file which contains a list of remote machines.
 	[-Recurse]          -     Continuosly attempt to connect to the remote machine.
 	[-Force]            -     Attempts to execute code on the remote host without testing testing the connection first.
-	[-Label]            -     Labels output by computer name.
+    [-Label]            -     Labels output by computer name.
 #>
 
 Param(
@@ -20,6 +21,8 @@ Param(
   [switch]$Force=$False,
   [switch]$Label=$False
 )
+
+$ErrorActionPreference = "SilentlyContinue"
 
 if($Force -and $Recurse)
 {
@@ -44,9 +47,7 @@ if($File -ne "")
   }
 }
 
-$ErrorActionPreference = "SilentlyContinue"
-
-function Get-LoggedOnUsers
+function Ret
 {
   foreach($SID in $(Get-ChildItem -Path Microsoft.PowerShell.Core\Registry::HKU).Name)
   {
@@ -70,34 +71,33 @@ function Det
     foreach($Comp in $ComputerName)
     {
       "`n" + $Comp + ":`n----------"
-      Invoke-Command -ComputerName $Comp -ScriptBlock ${function:Get-LoggedOnUsers}
+      Invoke-Command -ComputerName $Comp -ScriptBlock ${function:Ret}
       "`n"
     }
   }
   elseif($Label -and !($ComputerName.Count -gt 1))
   {
     "`n" + $ComputerName + ":`n----------"
-    Invoke-Command -ComputerName $ComputerName -ScriptBlock ${function:Get-LoggedOnUsers}
+    Invoke-Command -ComputerName $ComputerName -ScriptBlock ${function:Ret}
     "`n"
   }
   else
   {
-    Invoke-Command -ComputerName $ComputerName -ScriptBlock ${function:Get-LoggedOnUsers}
+    Invoke-Command -ComputerName $ComputerName -ScriptBlock ${function:Ret}
   }
 }
-
 
 if(@("localhost","127.0.0.1",$(hostname).ToLower()).Contains($ComputerName.ToLower()))
 {
   if($Label)
   {
     "`n" + $ComputerName + ":`n----------"
-    Get-LoggedOnUsers
+    Ret
     "`n"
   }
   else
   {
-    Get-LoggedOnUsers
+    Ret
   }
 }
 else
