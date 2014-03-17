@@ -9,24 +9,24 @@
 	-----------
 	[-ComputerName]     -     Specify a remote machine to get logged on users from.
 	[-File]             -     Specify a file which contains a list of remote machines.
-	[-Recurse]          -     Continuosly attempt to connect to the remote machine.
+	[-Repeat]           -     Continuosly attempt to connect to the remote machine.
 	[-Force]            -     Attempts to execute code on the remote host without testing testing the connection first.
-    [-Label]            -     Labels output by computer name.
+	[-Label]            -     Labels output by computer name.
 #>
 
 Param(
   $ComputerName="localhost",
   [string]$File="",
-  [switch]$Recurse=$False,
+  [switch]$Repeat=$False,
   [switch]$Force=$False,
   [switch]$Label=$False
 )
 
 $ErrorActionPreference = "SilentlyContinue"
 
-if($Force -and $Recurse)
+if($Force -and $Repeat)
 {
-  "Force and Recurse cannot be used together."
+  "Force and Repeat cannot be used together."
   break
 }
 if($File -ne "")
@@ -108,14 +108,14 @@ else
   }
   else
   {
-    if($Recurse -and !($Force))
+    if($Repeat -and !($Force))
     {
       while(!(Test-Connection $ComputerName -Count 1))
       {
       }
       Det
     }
-    elseif($Force -and !($Recurse))
+    elseif($Force -and !($Repeat))
     {
       try
       {
