@@ -154,43 +154,43 @@ def main():
     ToDo.join()
 
 def worker(ToDo, bcmd, bprep, brun, bget, bclean, bupdate):
-    get=ToDo.get()
-    host,user,pwd=get[0],get[1],get[2]
-
-    fail=0
-    if not bcmd or bprep:
-        retcode = prep(host,user,pwd)
-        if 1 in retcode:
-            fail=2
-            print host + ": LOGON FAILURE"
-        else:
-            print host + ": PREPARATION DONE"
-        
-    if (not bcmd or brun) and fail==0:
-        retcode = run(host,user,pwd)
-        if retcode == 1:
-            fail=1
-            print host + ": EXECUTION FAILURE"
-        else:
-            print host + ": EXECUTION DONE"
-        
-    if (not bcmd or bget) and fail==0:
-        retcode = retrieve(host,user,pwd)
-        if retcode == 1:
-            fail=1
-            print host + ": RESULTS FILE NOT FOUND"
-        else:
-            print host + ": RETRIEVAL DONE"
-       
-    if (not bcmd or bclean) and fail<2:
-        clean(host,user,pwd)
-        print host + ": CLEANING DONE"
+    while True:
+        get=ToDo.get()
+        host,user,pwd=get[0],get[1],get[2]
+        fail=0
+        if not bcmd or bprep:
+            retcode = prep(host,user,pwd)
+            if 1 in retcode:
+                fail=2
+                print host + ": LOGON FAILURE"
+            else:
+                print host + ": PREPARATION DONE"
           
-    if (not bcmd or bupdate) and fail==0:
-        update(host)
-        print host + ": UPDATE DONE"
+        if (not bcmd or brun) and fail==0:
+            retcode = run(host,user,pwd)
+            if retcode == 1:
+                fail=1
+                print host + ": EXECUTION FAILURE"
+            else:
+                print host + ": EXECUTION DONE"
+        
+        if (not bcmd or bget) and fail==0:
+            retcode = retrieve(host,user,pwd)
+            if retcode == 1:
+                fail=1
+                print host + ": RESULTS FILE NOT FOUND"
+            else:
+                print host + ": RETRIEVAL DONE"
+       
+        if (not bcmd or bclean) and fail<2:
+            clean(host,user,pwd)
+            print host + ": CLEANING DONE"
+            
+        if (not bcmd or bupdate) and fail==0:
+            update(host)
+            print host + ": UPDATE DONE"
 
-    ToDo.task_done()
+        ToDo.task_done()
 
 if __name__ == "__main__":
     main()
