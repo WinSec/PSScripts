@@ -1,37 +1,36 @@
-usbget.py
----------
+# usbget.py
 
-Features:
-- Logs USB information for remote hosts
-- Logs changes in USB information
-- Uses psexec method
-- CPython threading
+### Features:
+* Logs USB information for remote hosts
+* Logs changes in USB information
+* Uses psexec method
+* CPython threading
 
-Information Gathered:
-- Serial Number
-- Name
-- Registry Name
-- Port, Hub
-- DiskID
-- Vendor ID
-- Vendor Name
-- Product ID
-- Product Name
-- Revision Number
-- Volume Name
-- GUID
-- Driver
-- Original Install Date (setupapi)
-- Original Install Date
-- Last Arrival Date
-- Last Removal Date
+### USB Information Gathered:
+* Serial Number
+* Name
+* Registry Name
+* Port, Hub
+* DiskID
+* Vendor ID
+* Vendor Name
+* Product ID
+* Product Name
+* Revision Number
+* Volume Name
+* GUID
+* Driver
+* Original Install Date (setupapi)
+* Original Install Date
+* Last Arrival Date
+* Last Removal Date
 
-Dependencies:
-python2.7
-smbclient
-net rpc
+### Dependencies:
+* python2.7
+* smbclient
+* net rpc
 
-Help Banner:
+### Help Banner:
 usage: usbget.py user@IP(s) [command] [arguments]
 
 Monitor USB usage on remote hosts.
