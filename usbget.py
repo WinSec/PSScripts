@@ -34,6 +34,7 @@ def update(host):
     if os.path.isfile("./log/current/" + host) and os.path.isfile("./log/new/" + host):
         if open("./log/current/" + host).read() != open("./log/new/" + host).read():
             # Write to changelog, replace current with new
+            print host + ": CHANGE DETECTED"
             return subprocess.call(("cat ./log/current/" + host + " ./log/new/" + host + " > ./log/change/" + host),shell=True, stdout=v, stderr=subprocess.STDOUT) , subprocess.call(("mv ./log/new/" + host + " ./log/current/"),shell=True, stdout=v, stderr=subprocess.STDOUT)
     return subprocess.call(("mv ./log/new/" + host + " ./log/current/"),shell=True, stdout=v, stderr=subprocess.STDOUT)
 
@@ -58,7 +59,7 @@ def main():
 
     for arg in sys.argv:
         if arg == "-h" or arg == "--help":
-            print "usage: usbget.py user@IP(s) [command] [arguments]\n\nMonitor USB usage on remote hosts.\n\noptional commands:\n  prep              prepare target host\n  run               run script on target\n  get               retrieve results\n  clean             delete all usbget files from target\n  update            update log directory with new information\n\noptional arguments:\n  -t  --threads     number of threads (default: 3)\n  -v  --verbose     Be Verbose\n  -h  --help        show this help message and exit\n\nexamples:\n  usbmon.py luke@10.1.1.20-22 luke@10.1.2.1-5\n  usbmon.py luke@10.1.3.10,11 mike@10.1.1.6-9\n  usbmon.py luke@10.1.1.1,10.1.3.2 clean -v -t 1"
+            print "usage: usbget.py user@IP(s) [command] [arguments]\n\nMonitor USB usage on remote hosts.\n\noptional commands:\n  prep              push script, create service\n  run               start service\n  get               download results file\n  clean             delete all usbget files from target\n  update            update logs with new information\n\noptional arguments:\n  -t  --threads     number of threads (default: 3)\n  -v  --verbose     Be Verbose\n  -h  --help        show this help message and exit\n\nexamples:\n  usbmon.py luke@10.1.1.20-22 luke@10.1.2.1-5\n  usbmon.py luke@10.1.3.10,11 mike@10.1.1.6-9\n  usbmon.py luke@10.1.1.1,10.1.3.2 clean -v -t 1"
             exit()
         elif arg == "-v" or arg == "--verbose":
             v = 2
