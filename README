@@ -7,13 +7,31 @@ Features:
 - Uses psexec method
 - CPython threading
 
+Information Gathered:
+- Serial Number
+- Name
+- Registry Name
+- Port, Hub
+- DiskID
+- Vendor ID
+- Vendor Name
+- Product ID
+- Product Name
+- Revision Number
+- Volume Name
+- GUID
+- Driver
+- Original Install Date (setupapi)
+- Original Install Date
+- Last Arrival Date
+- Last Removal Date
+
 Dependencies:
 python2.7
 smbclient
 net rpc
 
 Help Banner:
-
 usage: usbget.py user@IP(s) [command] [arguments]
 
 Monitor USB usage on remote hosts.
