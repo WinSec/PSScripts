@@ -16,27 +16,43 @@ for logdir in ["./log","./log/new","./log/current","./log/change"]:
 
 def prep(host,user,pwd):
     # Upload Script, Create Service
-    return subprocess.call(("smbclient //" + host + "/admin$ " + pwd + " -U '" + user + """' -c "put gua.ps1" """),shell=True, stdout=v, stderr=subprocess.STDOUT), subprocess.call(('net rpc service create -I ' + host + " -U '" + user + "%" + pwd + """' USBMONsvc USBMON "cmd /c powershell.exe -executionpolicy bypass -File \\\\\\127.0.0.1\\admin$\gua.ps1 -System" """),shell=True, stdout=v, stderr=subprocess.STDOUT)
+    retcode = subprocess.call(("smbclient //" + host + "/admin$ " + pwd + " -U '" + user + """' -c "put gua.ps1" """),shell=True, stdout=v, stderr=subprocess.STDOUT), subprocess.call(('net rpc service create -I ' + host + " -U '" + user + "%" + pwd + """' USBMONsvc USBMON "cmd /c powershell.exe -executionpolicy bypass -File \\\\\\127.0.0.1\\admin$\gua.ps1 -System" """),shell=True, stdout=v, stderr=subprocess.STDOUT)
+    if 1 in retcode:
+        print host + ": LOGON FAILURE"
+    else:
+        print host + ": PREPARATION DONE"
+
 
 def run(host,user,pwd):
     # Start the service
-    return subprocess.call(('net rpc service start -I ' + host + " -U '" + user + "%" + pwd + "' USBMONsvc"),shell=True, stdout=v, stderr=subprocess.STDOUT) 
-    
+    retcode = subprocess.call(('net rpc service start -I ' + host + " -U '" + user + "%" + pwd + "' USBMONsvc"),shell=True, stdout=v, stderr=subprocess.STDOUT) 
+    if retcode == 1:
+        print host + ": EXECUTION FAILURE"
+    else:
+        print host + ": EXECUTION DONE"
+ 
 def retrieve(host, user, pwd):
     # Retrieve results
-    return subprocess.call(("smbclient //" + host + "/admin$ " + pwd + " -U '" + user + """' -c "get guaresults.txt ./log/new/""" + host + '"'),shell=True, stdout=v, stderr=subprocess.STDOUT)
+    retcode = subprocess.call(("smbclient //" + host + "/admin$ " + pwd + " -U '" + user + """' -c "get guaresults.txt ./log/new/""" + host + '"'),shell=True, stdout=v, stderr=subprocess.STDOUT)
+    if retcode == 1:
+        print host + ": RESULTS FILE NOT FOUND"
+    else:
+        print host + ": RETRIEVAL DONE"
 
 def clean(host,user,pwd):
     # Delete Service, Script, and output file
     subprocess.call(('net rpc service delete -I ' + host + " -U '" + user + "%" + pwd + "' USBMONsvc"),shell=True, stdout=v, stderr=subprocess.STDOUT), subprocess.call(("smbclient //" + host + "/admin$ " + pwd + " -U '" + user + """' -c "del gua.ps1" """),shell=True, stdout=v, stderr=subprocess.STDOUT), subprocess.call(("smbclient //" + host + "/admin$ " + pwd + " -U '" + user + """' -c "del guaresults.txt" """),shell=True, stdout=v, stderr=subprocess.STDOUT)
+    print host + ": CLEANING DONE"
 
-def update(host):
+def update(host,user,pwd):
     if os.path.isfile("./log/current/" + host) and os.path.isfile("./log/new/" + host):
         if open("./log/current/" + host).read() != open("./log/new/" + host).read():
             # Write to changelog, replace current with new
             print host + ": CHANGE DETECTED"
-            return subprocess.call(("cat ./log/current/" + host + " ./log/new/" + host + " > ./log/change/" + host),shell=True, stdout=v, stderr=subprocess.STDOUT) , subprocess.call(("mv ./log/new/" + host + " ./log/current/"),shell=True, stdout=v, stderr=subprocess.STDOUT)
-    return subprocess.call(("mv ./log/new/" + host + " ./log/current/"),shell=True, stdout=v, stderr=subprocess.STDOUT)
+            subprocess.call(("cat ./log/current/" + host + " ./log/new/" + host + " > ./log/change/" + host),shell=True, stdout=v, stderr=subprocess.STDOUT)
+    subprocess.call(("mv ./log/new/" + host + " ./log/current/"),shell=True, stdout=v, stderr=subprocess.STDOUT)
+    print host + ": UPDATE DONE"
+
 
 def main():
 
@@ -47,29 +63,39 @@ def main():
     global v
     argtargets = False
     argthreads = False
-    bprep = False
-    brun = False
-    bget = False
-    bclean = False
-    bupdate = False
-    bcmd = False
+    funcs = []
     hosts = {}
     pwds = {}
     threads = 3 
 
+    if "-h" in sys.argv or "--help" in sys.argv:
+        print "usage: usbget.py user@IP(s) [command] [arguments]\n\nMonitor USB usage on remote hosts.\n\noptional commands:\n  prep              push script, create service\n  run               start service\n  get               download results file\n  clean             delete all usbget files from target\n  update            update logs with new information\n\noptional arguments:\n  -t  --threads     number of threads (default: 3)\n  -v  --verbose     Be Verbose\n  -h  --help        show this help message and exit\n\nexamples:\n  usbmon.py luke@10.1.1.20-22 luke@10.1.2.1-5\n  usbmon.py luke@10.1.3.10,11 mike@10.1.1.6-9\n  usbmon.py luke@10.1.1.1,10.1.3.2 clean -v -t 1"
+        exit()
+    if "-v" in sys.argv or "--verbose" in sys.argv:
+        v = 2
+    if "-t" in sys.argv or "--threads" in sys.argv:
+        try:
+            threads = int(sys.argv[sys.argv.index("-t")+1])
+            argthreads = True
+        except:
+            sys.exit("""ERROR: "threads" provided is not an int.""")
+    if "prep" in sys.argv:
+        funcs.append(prep)
+    if "run" in sys.argv:
+        funcs.append(run)
+    if "get" in sys.argv:
+        funcs.append(retrieve)
+    if "clean" in sys.argv:
+        funcs.append(clean)
+    if "update" in sys.argv:
+        funcs.append(update)
+
+    # check for commands
+    if len(funcs) == 0:
+        funcs = [prep,run,retrieve,clean,update]
+
     for arg in sys.argv:
-        if arg == "-h" or arg == "--help":
-            print "usage: usbget.py user@IP(s) [command] [arguments]\n\nMonitor USB usage on remote hosts.\n\noptional commands:\n  prep              push script, create service\n  run               start service\n  get               download results file\n  clean             delete all usbget files from target\n  update            update logs with new information\n\noptional arguments:\n  -t  --threads     number of threads (default: 3)\n  -v  --verbose     Be Verbose\n  -h  --help        show this help message and exit\n\nexamples:\n  usbmon.py luke@10.1.1.20-22 luke@10.1.2.1-5\n  usbmon.py luke@10.1.3.10,11 mike@10.1.1.6-9\n  usbmon.py luke@10.1.1.1,10.1.3.2 clean -v -t 1"
-            exit()
-        elif arg == "-v" or arg == "--verbose":
-            v = 2
-        if arg == "-t" or arg == "--threads":
-            try:
-                threads = int(sys.argv[sys.argv.index("-t")+1])
-                argthreads = True
-            except:
-                sys.exit("""ERROR: "threads" provided is not an int.""")
-        elif arg.count(".") >= 3 and "@" in arg:
+        if arg.count(".") >= 3 and "@" in arg:
             # Clear targets
             targets=[]
             # Parse user
@@ -110,20 +136,6 @@ def main():
             seen = set()
             seen_add = seen.add
             hosts[user] = [ x for x in hosts[user] if x not in seen and not seen_add(x)]
-        elif arg.lower() == "prep":
-            bprep = True
-        elif arg.lower() == "run":
-            brun = True
-        elif arg.lower() == "get":
-            bget = True
-        elif arg.lower() == "clean":
-            bclean = True
-        elif arg.lower() == "update":
-            bupdate = True
-
-    # bcmd is true if the user is using a command
-    if bprep or brun or bget or bclean or bupdate == True:
-        bcmd = True
 
     # check for hosts
     if len(hosts.keys()) == 0:
@@ -134,7 +146,7 @@ def main():
 
     # start all the threads
     for i in range(threads):
-        thread = threading.Thread(target=worker, args=(ToDo,bcmd,bprep,brun,bget,bclean,bupdate))
+        thread = threading.Thread(target=worker, args=(ToDo,funcs))
         thread.daemon = True
         thread.start()
     
@@ -153,42 +165,11 @@ def main():
 
     ToDo.join()
 
-def worker(ToDo, bcmd, bprep, brun, bget, bclean, bupdate):
+def worker(ToDo, funcs):
     while True:
         get=ToDo.get()
-        host,user,pwd=get[0],get[1],get[2]
-        fail=0
-        if not bcmd or bprep:
-            retcode = prep(host,user,pwd)
-            if 1 in retcode:
-                fail=2
-                print host + ": LOGON FAILURE"
-            else:
-                print host + ": PREPARATION DONE"
-          
-        if (not bcmd or brun) and fail==0:
-            retcode = run(host,user,pwd)
-            if retcode == 1:
-                fail=1
-                print host + ": EXECUTION FAILURE"
-            else:
-                print host + ": EXECUTION DONE"
-        
-        if (not bcmd or bget) and fail==0:
-            retcode = retrieve(host,user,pwd)
-            if retcode == 1:
-                fail=1
-                print host + ": RESULTS FILE NOT FOUND"
-            else:
-                print host + ": RETRIEVAL DONE"
-       
-        if (not bcmd or bclean) and fail<2:
-            clean(host,user,pwd)
-            print host + ": CLEANING DONE"
-            
-        if (not bcmd or bupdate) and fail==0:
-            update(host)
-            print host + ": UPDATE DONE"
+        for func in funcs:
+            func(get[0],get[1],get[2])
 
         ToDo.task_done()
 
