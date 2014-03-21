@@ -61,8 +61,6 @@ def main():
         print "WARNING: YOU ARE NOT ROOT, THIS MAY CAUSE ISSUES"
 
     global v
-    argtargets = False
-    argthreads = False
     funcs = []
     hosts = {}
     pwds = {}
@@ -76,7 +74,6 @@ def main():
     if "-t" in sys.argv or "--threads" in sys.argv:
         try:
             threads = int(sys.argv[sys.argv.index("-t")+1])
-            argthreads = True
         except:
             sys.exit("""ERROR: "threads" provided is not an int.""")
     if "prep" in sys.argv:
@@ -105,7 +102,6 @@ def main():
                 hosts[user]=[]
             # Parse IP of user@IP
             IP = arg.split("@")[1]
-            argtargets = True
             if "-" in IP or "," in IP:
                 if "-" in IP:
                     targets.append(IP.split("-")[0])
